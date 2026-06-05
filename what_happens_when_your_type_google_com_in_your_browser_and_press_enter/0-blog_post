@@ -1,0 +1,126 @@
+# What Happens When You Type https://www.google.com in Your Browser and Press Enter?
+
+This is one of the most famous interview questions in software engineering. It seems simple, but the answer touches nearly every layer of the web stack. Let's walk through the full journey of a single request.
+
+---
+
+## 1. DNS Request
+
+Before your browser can send any data, it needs to translate the human-readable domain `www.google.com` into an IP address that routers can understand.
+
+**Step by step:**
+1. The browser checks its own **local cache** — if you visited Google recently, the IP may already be stored.
+2. If not found, the OS checks the `/etc/hosts` file for a manual entry.
+3. Still nothing? The OS asks the **DNS resolver** configured on your machine (usually your router or your ISP's server).
+4. The resolver performs a **recursive lookup**:
+   - Asks a **root nameserver** → points to the `.com` TLD nameserver
+   - Asks the `.com` TLD nameserver → points to Google's authoritative nameserver
+   - Asks Google's nameserver → returns the IP address (e.g., `142.250.74.68`)
+5. The IP is returned to your browser and cached for future requests (respecting the TTL value).
+
+---
+
+## 2. TCP/IP
+
+Now that the browser has the IP address, it needs to establish a connection. The web runs on **TCP (Transmission Control Protocol)**, which guarantees reliable, ordered delivery of data.
+
+**The TCP 3-way handshake:**
+1. Your browser sends a `SYN` packet to Google's server.
+2. The server responds with `SYN-ACK`.
+3. Your browser confirms with `ACK`.
+
+The connection is now established. Underneath TCP sits **IP (Internet Protocol)**, which is responsible for routing each packet across multiple networks (routers) from your machine to Google's data center.
+
+---
+
+## 3. Firewall
+
+Along the way — and at both endpoints — **firewalls** inspect the traffic.
+
+- **On your side:** your OS or router may have firewall rules that allow outbound connections on port 443 (HTTPS).
+- **On Google's side:** their infrastructure runs enterprise-grade firewalls that block anything that doesn't match expected traffic patterns. Only ports 80 (HTTP) and 443 (HTTPS) are open to the public.
+
+Firewalls operate at different layers: some filter by IP address and port (network layer), others inspect packet content (application layer).
+
+---
+
+## 4. HTTPS / SSL
+
+Since the URL starts with `https://`, the communication must be **encrypted**. This is handled by **TLS (Transport Layer Security)**, commonly still referred to as SSL.
+
+**The TLS handshake (simplified):**
+1. The browser tells the server which TLS version and cipher suites it supports.
+2. The server sends its **SSL certificate**, issued by a trusted Certificate Authority (CA) like DigiCert or Let's Encrypt.
+3. The browser verifies the certificate is valid, not expired, and matches the domain.
+4. Both sides negotiate a **session key** using asymmetric encryption (e.g., RSA or ECDH).
+5. From this point, all data is encrypted symmetrically — fast and secure.
+
+Without HTTPS, anyone on the network could read or modify the data in transit (man-in-the-middle attack).
+
+---
+
+## 5. Load Balancer
+
+Your request reaches Google's network and hits a **load balancer** before touching any actual server.
+
+Google handles billions of requests per day. No single server can handle this. The load balancer:
+- Distributes incoming traffic across a pool of servers
+- Uses algorithms like **round-robin**, **least connections**, or **IP hashing**
+- Monitors server health and avoids routing to servers that are down
+- Can also handle SSL termination (decrypting HTTPS traffic before passing it along internally)
+
+This makes the system scalable and fault-tolerant.
+
+---
+
+## 6. Web Server
+
+After passing the load balancer, the request reaches a **web server** — software like **nginx** or Apache.
+
+The web server's job:
+- Parses the incoming HTTP request
+- Serves **static assets** directly (images, CSS, JavaScript files) without involving any application logic
+- For dynamic requests (like a search query), forwards the request to the application server
+
+---
+
+## 7. Application Server
+
+The **application server** is where the actual business logic runs.
+
+For a Google search:
+- It receives your query (`q=something`)
+- Runs ranking algorithms, spelling correction, personalization
+- Calls internal services and databases to fetch results
+- Builds the response (a list of search results with titles, URLs, snippets)
+
+Google uses custom infrastructure for this — massively distributed systems written in C++, Python, and Go, running across dozens of data centers worldwide.
+
+---
+
+## 8. Database
+
+To return results, the application server queries one or more **databases**.
+
+In Google's case:
+- The web index is stored in distributed systems like **Bigtable** and **Spanner** — Google's own database technologies designed for petabyte-scale data
+- Results are retrieved, ranked, and assembled
+- Caching layers (like Memcache or Redis) sit in front of the database to serve frequently-requested data faster
+
+The final response travels back through the application server → web server → load balancer → internet → your browser.
+
+---
+
+## Conclusion
+
+In under a second, your browser has:
+1. Resolved a domain name via DNS
+2. Established a TCP connection
+3. Passed through firewalls
+4. Completed a TLS handshake for encryption
+5. Hit a load balancer that distributed the request
+6. Reached a web server that routed it to an application server
+7. Queried distributed databases
+8. Received a full HTML page back — and rendered it for you
+
+This entire journey — spanning DNS infrastructure, global routing, cryptography, and distributed systems — happens invisibly every time you press Enter. Understanding each layer is what separates a developer from a web engineer.
