@@ -1,0 +1,85 @@
+Flow diagram: what happens when you type https://www.google.com and press Enter
+
++------------------+
+|     BROWSER      |
+|  www.google.com  |
++--------+---------+
+         |
+         | 1. DNS RESOLUTION
+         v
++------------------+       +-------------------+       +--------------------+
+|   DNS RESOLVER   | ----> | ROOT / TLD SERVER | ----> | GOOGLE NAMESERVER  |
+|  (ISP / Router)  |       |    (.com, etc.)    |       | returns 142.250.x.x|
++--------+---------+       +-------------------+       +--------------------+
+         |
+         | IP address returned to browser
+         |
+         | 2. TCP CONNECTION (port 443)
+         |    SYN -> SYN-ACK -> ACK
+         |
+         | 3. FIREWALL CHECK
+         v
++------------------+
+|    FIREWALL      |
+|  allows port 443 |
++--------+---------+
+         |
+         | 4. HTTPS / TLS ENCRYPTION
+         |    Certificate verified
+         |    Session key exchanged
+         |    All traffic encrypted
+         v
++------------------+
+|  LOAD BALANCER   |
+|  distributes     |
+|  traffic across  |
+|  server pool     |
++--------+---------+
+         |
+         +-------------------------+
+         |                         |
+         v                         v
++------------------+     +------------------+
+|   WEB SERVER     |     |   WEB SERVER     |
+|   (nginx)        |     |   (nginx)        |
+|  serves static   |     |  serves static   |
+|  assets          |     |  assets          |
++--------+---------+     +------------------+
+         |
+         | dynamic request forwarded
+         v
++------------------+
+| APPLICATION      |
+|    SERVER        |
+|  runs business   |
+|  logic / search  |
++--------+---------+
+         |
+         | queries data
+         v
++------------------+
+|    DATABASE      |
+|  (Bigtable /     |
+|   Spanner)       |
+|  returns results |
++--------+---------+
+         |
+         | response travels back up the chain
+         v
++------------------+
+|     BROWSER      |
+|  renders the     |
+|  HTML page       |
++------------------+
+
+Full flow summary:
+  Browser
+    -> DNS resolution (domain -> IP)
+    -> TCP handshake on port 443
+    -> Firewall (traffic allowed)
+    -> TLS handshake (traffic encrypted)
+    -> Load balancer (request distributed)
+    -> Web server (static assets or forward)
+    -> Application server (page generated)
+    -> Database (data fetched)
+    -> Response back to browser
